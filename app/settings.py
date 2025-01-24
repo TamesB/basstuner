@@ -10,7 +10,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', "appdjango-a303c69ed7a5.herokuapp.com", "tamesb.io", "www.tamesb.io"]
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', "tamesb.io", "www.tamesb.io"]
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
