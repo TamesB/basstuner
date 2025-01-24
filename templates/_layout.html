@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Free online bass guitar tuner app. Easily tune your 4, 5, or 6 string bass guitar to standard and alternate tunings with our accurate digital tuner. Perfect pitch every time.">
+    <meta name="keywords" content="bass tuner, bass guitar tuner, online bass tuner, bass guitar tuning, bass tuning app, 4 string bass tuner, 5 string bass tuner, bass guitar pitch, bass guitar notes, bass guitar standard tuning, bass guitar tuning guide, bass tuning tool, electric bass tuner, digital bass tuner, bass guitar tuner online free">
+    <meta name="author" content="Bass Tuner">
+    <meta name="robots" content="index, follow">
+    <meta property="og:title" content="Your Website Title">
+    <meta property="og:description" content="Your website description for social media sharing">
+    <meta property="og:image" content="/static/logo.png">
+    <meta property="og:url" content="https://basstuner.com">
+    <link rel="canonical" href="https://basstuner.com">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="stylesheet" href="styles.css">
+    <title>Bass Tuner | Guitar | Music</title>
+    <script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "Organization",
+        "name": "BassTune",
+        "url": "https://localhost",
+        "logo": "/static/logo.png"
+    }
+    </script>
+</head>
+<body>
+    <header>
+        {% block header %}
+            {% include '_header.html' %}
+        {% endblock %}
+    </header>
+
+    <main>
+        {% block main %}
+            {% include 'index.html' %}
+        {% endblock %}
+    </main>
+
+    <aside>
+        {% block sidebar %}
+            {% include '_sidebar.html' %}
+        {% endblock %}
+    </aside>
+
+    <footer>
+        {% block footer %}
+            {% include '_footer.html' %}
+        {% endblock %}        
+    </footer>
+
+    {% block scripts %}
+    {% endblock %}
+    
+</body>
+</html>

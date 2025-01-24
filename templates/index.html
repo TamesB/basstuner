@@ -1,0 +1,187 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Frequency Monitor</title>
+    <style>
+        .gauge-container {
+            width: 300px;
+            margin: 20px auto;
+        }
+        .gauge {
+            width: 100%;
+            height: 100%;
+        }
+        .note-display {
+            text-align: center;
+            font-size: 24px;
+            margin-top: 10px;
+        }
+        .tick {
+            font-size: 6px;
+        }
+        .noteText {
+            font-size: 8px;
+            text-anchor: middle;
+        }
+    </style>
+</head>
+<body>
+    <div class="gauge-container">
+        <svg class="gauge" viewBox="0 0 100 100">
+            <path d="M 10 80 A 40 40 0 1 1 90 80" 
+                  fill="none" stroke="#ddd" stroke-width="8"/>
+            <g id="ticks"></g>
+            <path id="gauge-indicator" 
+                  d="M 50 80 L 50 30" 
+                  stroke="#2196F3" 
+                  stroke-width="4" 
+                  stroke-linecap="round"/>
+            <circle cx="50" cy="80" r="5" fill="#2196F3"/>
+            <text id="currentNote" x="50" y="25" class="noteText">-</text>
+        </svg>
+        <div class="note-display">
+            <span id="frequency"></span>
+            <span id="noteHz"></span>
+        </div>
+    </div>
+    <script type="module">
+        import { intonate } from '../static/intonate.js';
+
+        const readings = [];
+        const averageWindow = 1000;
+        let lastUpdateTime = 0;
+        const updateInterval = 125;
+
+        const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        function getAdjacentNotes(note, octave) {
+            const noteIndex = notes.indexOf(note);
+            const lowerIndex = (noteIndex - 1 + notes.length) % notes.length;
+            const higherIndex = (noteIndex + 1) % notes.length;
+            
+            let lowerOctave = octave;
+            let higherOctave = octave;
+            
+            if (noteIndex === 0) lowerOctave--;
+            if (noteIndex === 11) higherOctave++;
+            
+            return {
+                lower: notes[lowerIndex] + lowerOctave,
+                higher: notes[higherIndex] + higherOctave
+            };
+        }
+
+        function generateTicks(baseFreq) {
+            const ticksGroup = document.getElementById('ticks');
+            ticksGroup.innerHTML = '';
+            
+            const centValues = [-50, -40, -30, -20, -10, 0, 10, 20, 30, 40, 50];
+            
+            centValues.forEach(cents => {
+                const angle = (cents * 1.8) - 90;
+                const x = 50 + 40 * Math.cos((angle * Math.PI) / 180);
+                const y = 80 + 40 * Math.sin((angle * Math.PI) / 180);
+                
+                const tick = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                const tickLength = cents % 10 === 0 ? 5 : 3;
+                const x2 = 50 + (40 - tickLength) * Math.cos((angle * Math.PI) / 180);
+                const y2 = 80 + (40 - tickLength) * Math.sin((angle * Math.PI) / 180);
+                
+                tick.setAttribute("x1", x);
+                tick.setAttribute("y1", y);
+                tick.setAttribute("x2", x2);
+                tick.setAttribute("y2", y2);
+                tick.setAttribute("stroke", "#000");
+                tick.setAttribute("stroke-width", "1");
+                
+                ticksGroup.appendChild(tick);
+                
+                if (cents % 10 === 0) {
+                    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    const textX = 50 + 45 * Math.cos((angle * Math.PI) / 180);
+                    const textY = 80 + 45 * Math.sin((angle * Math.PI) / 180);
+                    text.setAttribute("x", textX);
+                    text.setAttribute("y", textY);
+                    text.setAttribute("class", "tick");
+                    text.setAttribute("text-anchor", "middle");
+                    text.textContent = `${cents}`;
+                    ticksGroup.appendChild(text);
+                }
+            });
+        }
+
+        function getAverageDeviation(newDeviation) {
+            readings.push(newDeviation);
+            if (readings.length > averageWindow) {
+                readings.shift();
+            }
+            const validReadings = readings.filter(r => !isNaN(r));
+            return validReadings.length ? validReadings.reduce((a, b) => a + b, 0) / validReadings.length : 0;
+        }
+
+        function updateGauge(deviation) {
+            const smoothedDeviation = getAverageDeviation(deviation);
+            const indicator = document.getElementById('gauge-indicator');
+            const angle = Math.max(-90, Math.min(90, smoothedDeviation));
+            const x = 50 + 50 * Math.sin(angle * Math.PI / 180);
+            const y = 80 - 50 * Math.cos(angle * Math.PI / 180);
+            indicator.setAttribute('d', `M 50 80 L ${x} ${y}`);
+            indicator.setAttribute('stroke-width', '1');
+            return smoothedDeviation;
+        }
+
+        async function init() {
+            const monitor = await intonate();
+            let currentNote = null;
+            
+            monitor.subscribe(({ frequency, note, deviation, octave }) => {
+                const now = Date.now();
+                if (now - lastUpdateTime < updateInterval) return;
+                lastUpdateTime = now;
+
+                const freqElement = document.getElementById('frequency');
+                const currentNoteElement = document.getElementById('currentNote');
+                
+                if (frequency) {
+                    if (note !== currentNote) {
+                        currentNote = note;
+                        readings.length = 0;
+                        generateTicks(frequency - deviation);
+                        
+                        const adjacentNotes = getAdjacentNotes(note, octave);
+                        currentNoteElement.textContent = note + octave;
+                    }
+                    freqElement.innerHTML = `${Math.round(frequency)} Hz`;
+                    const cents = 1200 * Math.log2(frequency / (frequency - deviation));
+                    // if for the past 15 readings the spread was less than 10 cents, we can assume the note is stable, and update the gauge
+                    
+                    const smoothedCents = updateGauge(cents);
+
+
+                    const deviationElement = document.getElementById('noteHz');
+                    deviationElement.innerHTML = `(${Math.round(smoothedCents)}¢)`;
+
+                    if (Math.abs(smoothedCents) < 5) {
+                        deviationElement.style.color = 'green';
+                    } else {
+                        deviationElement.style.color = 'red';
+                    }
+
+                } else {
+                    currentNoteElement.textContent = '-';
+                    freqElement.innerHTML = 'No pitch detected';
+                    updateGauge(0);
+                    currentNote = null;
+                    readings.length = 0;
+        }
+        });
+            
+            monitor.listen();
+        }
+
+        init().catch(error => {
+            document.getElementById('currentNote').textContent = 'Error';
+        });
+</script>
+</body>
+</html>
